@@ -1,0 +1,12 @@
+database:
+  default: sqlite
+  mysql:
+    driver: mysql
+    host: localhost
+    database: database
+    user: root
+    password: null
+    prefix: null
+  sqlite:
+    driver: sqlite
+    database: data/tasks.db
