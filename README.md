@@ -2,4 +2,6 @@
 
 _Install_
 
-pip install flask-restful flask-orator pyyaml
+pip install flask-restful pyyaml flask-sqlalchemy
+
+// pip install flask-restful flask-orator pyyaml pkgutil
