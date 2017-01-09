@@ -1,11 +1,10 @@
 import os
 import yaml
+import sqlite3
+import json
 
-from flask import Flask
+from flask import Flask, g
 from flask_restful import reqparse, abort, Api, Resource
-from flask_sqlalchemy import SQLAlchemy
-from marshmallow import Schema, fields, pprint
-
 
 config = yaml.safe_load(open('config/config.yaml'))
 
@@ -13,15 +12,13 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
 # Setup database
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data/app.db'
-db = SQLAlchemy(app)
+conn = sqlite3.connect('data/app.db')
+c = conn.cursor()
 
 # Setup Restful API Support
 api = Api(app)
 
-
-class Todo(db.Model):
+class Todo():
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(256))
     description = db.Column(db.Text)
@@ -37,14 +34,24 @@ class Todo(db.Model):
     def __repr__(self):
         return '{}'
 
+    def findall():
+        c.execute('SELECT * FROM todo');
+        rows = c.fetchall()
+        tasks = []
+        for row in rows:
+            tasks[] = Todo(row[])
 
-class TodoSchema(Schema):
-    id = fields.Int()
-    title = fields.Str()
-    description = fields.Str()
-    active = fields.Bool()
-    complete = fields.Bool()
+class RequestResponse():
+    success = True
+    status = 200
+    message = ''
+    payload = []
 
+    def __init__(self, message, payload, success = True, status = 200):
+        self.success = success
+        self.status = status
+        self.message = message
+        self.payload = payload
 
 # TODO = {
 #     'todo1': {'task': 'build an API'},
@@ -83,12 +90,10 @@ class Task(Resource):
 # shows a list of all todos, and lets you POST to add new tasks
 class TaskList(Resource):
     def get(self):
-        todos = Todo.query.all()
-        schema = TodoSchema()
-        json = schema.dumps(todos)
-        return todos
         
-
+        response = RequestResponse()
+        return rows
+        
     def post(self):
         args = parser.parse_args()
         task_id = int(max(TODO.keys()).lstrip('todo')) + 1
