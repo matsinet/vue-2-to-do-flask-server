@@ -1,7 +1,7 @@
-import os
 import yaml
 import sqlite3
 import json
+import os
 
 from flask import Flask, g
 from flask_restful import reqparse, abort, Api, Resource
