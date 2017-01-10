@@ -44,6 +44,13 @@ def close_connection(exception):
 # Setup Restful API Support
 api = Api(app)
 
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE')
+    return response
+
 parser = reqparse.RequestParser()
 parser.add_argument('id')
 parser.add_argument('title')
@@ -124,7 +131,7 @@ class TaskList(Resource):
             'success': True, 
             'status': 200,
             'message': message,
-            'payload': todos
+            'payload': {'tasks': todos}
         }
         return response
         
