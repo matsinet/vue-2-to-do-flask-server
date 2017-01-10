@@ -44,11 +44,6 @@ def close_connection(exception):
 # Setup Restful API Support
 api = Api(app)
 
-
-def abort_if_todo_doesnt_exist(todo_id):
-    if todo_id not in TODO:
-        abort(404, message="Todo {} doesn't exist".format(todo_id))
-
 parser = reqparse.RequestParser()
 parser.add_argument('id')
 parser.add_argument('title')
@@ -89,13 +84,31 @@ class Task(Resource):
             'message': message,
             'payload': []
         }
-        return response, 204
+        return response, 201
 
-    def put(self, id):
+    def patch(self, id):
         args = parser.parse_args()
-        task = {'task': args['task']}
-        TODO[task_id] = task
-        return task, 201
+        title = args['title']
+        description = args['description']
+        active = args['active']
+        complete = args['complete']
+        valuestrings = []
+        for key, value in args.items():
+            if key != 'id':
+                valuestrings.append('{0} = ?'.format(key))
+
+        query = 'UPDATE todo SET {0} WHERE id = ?'.format(", ".join(valuestrings))
+        rowid = db_execute(query, (title, description, active, complete, id))
+
+        row = db_query('SELECT * FROM todo WHERE id = ?', [id], one=True)
+        message = 'task updated successfully'
+        response = {
+            'success': True, 
+            'status': 200,
+            'message': ", ".join(valuestrings),
+            'payload': [dict(row)]
+        }
+        return response, 201
 
 
 # TodoList
@@ -144,7 +157,7 @@ api.add_resource(Task, '/tasks/<id>')
 
 @app.route('/')
 def home():
-    return "Please use a valid route"
+    return "Please use a valid route", 404
 
 
 if __name__ == '__main__':
