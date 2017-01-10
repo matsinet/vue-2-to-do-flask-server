@@ -12,52 +12,47 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
 # Setup database
-conn = sqlite3.connect('data/app.db')
-c = conn.cursor()
+DATABASE = 'data/app.db'
+
+def get_db():
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = sqlite3.connect(DATABASE)
+        db.row_factory = sqlite3.Row
+    return db
+
+def db_query(query, args=(), one=False):
+    cur = get_db().execute(query, args)
+    rv = cur.fetchall()
+    cur.close()
+    return (rv[0] if rv else None) if one else rv
+
+def db_execute(query, args=()):
+    cur = get_db().execute(query, args)
+    get_db().commit()
+    cur.close()
+
+def db_execute(query, args=()):
+    # query = 'INSERT INTO %s (%s) VALUES (%s)' % (
+    #     table,
+    #     ', '.join(fields),
+    #     ', '.join(['?'] * len(values))
+    # )
+    cur = get_db().execute(query, args)
+    get_db().commit()
+    lastid = cur.lastrowid
+    cur.close()
+    return lastid
+
+
+@app.teardown_appcontext
+def close_connection(exception):
+    db = getattr(g, '_database', None)
+    if db is not None:
+        db.close()
 
 # Setup Restful API Support
 api = Api(app)
-
-class Todo():
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(256))
-    description = db.Column(db.Text)
-    active = db.Column(db.Boolean)
-    complete = db.Column(db.Boolean)
-
-    def __init__(self, title, description, active, complete):
-        self.title = title
-        self.description = description
-        self.active = active
-        self.complete = complete
-
-    def __repr__(self):
-        return '{}'
-
-    def findall():
-        c.execute('SELECT * FROM todo');
-        rows = c.fetchall()
-        tasks = []
-        for row in rows:
-            tasks[] = Todo(row[])
-
-class RequestResponse():
-    success = True
-    status = 200
-    message = ''
-    payload = []
-
-    def __init__(self, message, payload, success = True, status = 200):
-        self.success = success
-        self.status = status
-        self.message = message
-        self.payload = payload
-
-# TODO = {
-#     'todo1': {'task': 'build an API'},
-#     'todo2': {'task': '?????'},
-#     'todo3': {'task': 'profit!'},
-# }
 
 
 def abort_if_todo_doesnt_exist(todo_id):
@@ -65,7 +60,11 @@ def abort_if_todo_doesnt_exist(todo_id):
         abort(404, message="Todo {} doesn't exist".format(todo_id))
 
 parser = reqparse.RequestParser()
-parser.add_argument('task')
+parser.add_argument('id')
+parser.add_argument('title')
+parser.add_argument('description')
+parser.add_argument('active')
+parser.add_argument('complete')
 
 # Todo
 # shows a single todo item and lets you delete a todo item
@@ -90,16 +89,39 @@ class Task(Resource):
 # shows a list of all todos, and lets you POST to add new tasks
 class TaskList(Resource):
     def get(self):
+        todos = []
+        rows = db_query('select * from todo')
+        for row in rows:
+            todos.append(dict(row))
+        message = "{} records returned".format(len(todos))
+        response = {
+            'success': True, 
+            'status': 200,
+            'message': message,
+            'payload': todos
+        }
+        return response
         
-        response = RequestResponse()
-        return rows
         
     def post(self):
         args = parser.parse_args()
-        task_id = int(max(TODO.keys()).lstrip('todo')) + 1
-        task_id = 'todo%i' % task_id
-        TODO[task_id] = {'task': args['task']}
-        return TODO[task_id], 201
+        title = args['title']
+        description = args['description']
+        query = 'INSERT INTO todo (%s) VALUES (%s)' % (
+            ', '.join(('title', 'description')),
+            ', '.join(['?'] * len((title, description)))
+        )
+        id = db_execute(query, (title, description))
+        row = db_query('SELECT * FROM todo WHERE id = ?', [id], one=True)
+        message = 'task created successfully'
+        response = {
+            'success': True, 
+            'status': 200,
+            'message': message,
+            'payload': [dict(row)]
+        }
+        return response, 201
+
 
 ##
 ## Actually setup the Api resource routing here
