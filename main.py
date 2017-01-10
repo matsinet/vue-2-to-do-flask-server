@@ -30,16 +30,6 @@ def db_query(query, args=(), one=False):
 def db_execute(query, args=()):
     cur = get_db().execute(query, args)
     get_db().commit()
-    cur.close()
-
-def db_execute(query, args=()):
-    # query = 'INSERT INTO %s (%s) VALUES (%s)' % (
-    #     table,
-    #     ', '.join(fields),
-    #     ', '.join(['?'] * len(values))
-    # )
-    cur = get_db().execute(query, args)
-    get_db().commit()
     lastid = cur.lastrowid
     cur.close()
     return lastid
