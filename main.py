@@ -59,16 +59,39 @@ parser.add_argument('complete')
 # Todo
 # shows a single todo item and lets you delete a todo item
 class Task(Resource):
-    def get(self, task_id):
-        abort_if_todo_doesnt_exist(task_id)
-        return TODO[task_id]
+    def get(self, id):
+        message = "record returned successfully"
+        status = 200
+        success = True
+        row = db_query('SELECT * FROM todo WHERE id = ?', (id), one=True)
+        if row is None:
+            payload = []
+            message = 'no matching record found'
+            status = 404
+            success = False
+        else:
+            payload = [dict(row)]
+        response = {
+            'success': success, 
+            'status': status,
+            'message': message,
+            'payload': payload
+        }
+        return response
 
-    def delete(self, task_id):
-        abort_if_todo_doesnt_exist(task_id)
-        del TODO[task_id]
-        return '', 204
+    def delete(self, id):
+        query = 'DELETE FROM todo WHERE id = ?'
+        id = db_execute(query, (id))
+        message = 'task removed successfully'
+        response = {
+            'success': True, 
+            'status': 200,
+            'message': message,
+            'payload': []
+        }
+        return response, 204
 
-    def put(self, task_id):
+    def put(self, id):
         args = parser.parse_args()
         task = {'task': args['task']}
         TODO[task_id] = task
@@ -80,10 +103,10 @@ class Task(Resource):
 class TaskList(Resource):
     def get(self):
         todos = []
-        rows = db_query('select * from todo')
+        rows = db_query('SELECT * FROM todo')
         for row in rows:
             todos.append(dict(row))
-        message = "{} records returned".format(len(todos))
+        message = "{} records returned successfully".format(len(todos))
         response = {
             'success': True, 
             'status': 200,
@@ -117,7 +140,7 @@ class TaskList(Resource):
 ## Actually setup the Api resource routing here
 ##
 api.add_resource(TaskList, '/tasks')
-api.add_resource(Task, '/tasks/<task_id>')
+api.add_resource(Task, '/tasks/<id>')
 
 @app.route('/')
 def home():
