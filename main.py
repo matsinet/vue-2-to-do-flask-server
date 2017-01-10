@@ -1,11 +1,10 @@
-import os
 import yaml
+import sqlite3
+import json
+import os
 
-from flask import Flask
+from flask import Flask, g
 from flask_restful import reqparse, abort, Api, Resource
-from flask_sqlalchemy import SQLAlchemy
-from marshmallow import Schema, fields, pprint
-
 
 config = yaml.safe_load(open('config/config.yaml'))
 
@@ -13,98 +12,152 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
 # Setup database
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data/app.db'
-db = SQLAlchemy(app)
+DATABASE = 'data/app.db'
+
+def get_db():
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = sqlite3.connect(DATABASE)
+        db.row_factory = sqlite3.Row
+    return db
+
+def db_query(query, args=(), one=False):
+    cur = get_db().execute(query, args)
+    rv = cur.fetchall()
+    cur.close()
+    return (rv[0] if rv else None) if one else rv
+
+def db_execute(query, args=()):
+    cur = get_db().execute(query, args)
+    get_db().commit()
+    lastid = cur.lastrowid
+    cur.close()
+    return lastid
+
+
+@app.teardown_appcontext
+def close_connection(exception):
+    db = getattr(g, '_database', None)
+    if db is not None:
+        db.close()
 
 # Setup Restful API Support
 api = Api(app)
 
-
-class Todo(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(256))
-    description = db.Column(db.Text)
-    active = db.Column(db.Boolean)
-    complete = db.Column(db.Boolean)
-
-    def __init__(self, title, description, active, complete):
-        self.title = title
-        self.description = description
-        self.active = active
-        self.complete = complete
-
-    def __repr__(self):
-        return '{}'
-
-
-class TodoSchema(Schema):
-    id = fields.Int()
-    title = fields.Str()
-    description = fields.Str()
-    active = fields.Bool()
-    complete = fields.Bool()
-
-
-# TODO = {
-#     'todo1': {'task': 'build an API'},
-#     'todo2': {'task': '?????'},
-#     'todo3': {'task': 'profit!'},
-# }
-
-
-def abort_if_todo_doesnt_exist(todo_id):
-    if todo_id not in TODO:
-        abort(404, message="Todo {} doesn't exist".format(todo_id))
-
 parser = reqparse.RequestParser()
-parser.add_argument('task')
+parser.add_argument('id')
+parser.add_argument('title')
+parser.add_argument('description')
+parser.add_argument('active')
+parser.add_argument('complete')
 
 # Todo
 # shows a single todo item and lets you delete a todo item
 class Task(Resource):
-    def get(self, task_id):
-        abort_if_todo_doesnt_exist(task_id)
-        return TODO[task_id]
+    def get(self, id):
+        message = "record returned successfully"
+        status = 200
+        success = True
+        row = db_query('SELECT * FROM todo WHERE id = ?', (id), one=True)
+        if row is None:
+            payload = []
+            message = 'no matching record found'
+            status = 404
+            success = False
+        else:
+            payload = [dict(row)]
+        response = {
+            'success': success, 
+            'status': status,
+            'message': message,
+            'payload': payload
+        }
+        return response
 
-    def delete(self, task_id):
-        abort_if_todo_doesnt_exist(task_id)
-        del TODO[task_id]
-        return '', 204
+    def delete(self, id):
+        query = 'DELETE FROM todo WHERE id = ?'
+        id = db_execute(query, (id))
+        message = 'task removed successfully'
+        response = {
+            'success': True, 
+            'status': 200,
+            'message': message,
+            'payload': []
+        }
+        return response, 201
 
-    def put(self, task_id):
+    def patch(self, id):
         args = parser.parse_args()
-        task = {'task': args['task']}
-        TODO[task_id] = task
-        return task, 201
+        title = args['title']
+        description = args['description']
+        active = args['active']
+        complete = args['complete']
+        valuestrings = []
+        for key, value in args.items():
+            if key != 'id':
+                valuestrings.append('{0} = ?'.format(key))
+
+        query = 'UPDATE todo SET {0} WHERE id = ?'.format(", ".join(valuestrings))
+        rowid = db_execute(query, (title, description, active, complete, id))
+
+        row = db_query('SELECT * FROM todo WHERE id = ?', [id], one=True)
+        message = 'task updated successfully'
+        response = {
+            'success': True, 
+            'status': 200,
+            'message': ", ".join(valuestrings),
+            'payload': [dict(row)]
+        }
+        return response, 201
 
 
 # TodoList
 # shows a list of all todos, and lets you POST to add new tasks
 class TaskList(Resource):
     def get(self):
-        todos = Todo.query.all()
-        schema = TodoSchema()
-        json = schema.dumps(todos)
-        return todos
+        todos = []
+        rows = db_query('SELECT * FROM todo')
+        for row in rows:
+            todos.append(dict(row))
+        message = "{} records returned successfully".format(len(todos))
+        response = {
+            'success': True, 
+            'status': 200,
+            'message': message,
+            'payload': todos
+        }
+        return response
         
-
+        
     def post(self):
         args = parser.parse_args()
-        task_id = int(max(TODO.keys()).lstrip('todo')) + 1
-        task_id = 'todo%i' % task_id
-        TODO[task_id] = {'task': args['task']}
-        return TODO[task_id], 201
+        title = args['title']
+        description = args['description']
+        query = 'INSERT INTO todo (%s) VALUES (%s)' % (
+            ', '.join(('title', 'description')),
+            ', '.join(['?'] * len((title, description)))
+        )
+        id = db_execute(query, (title, description))
+        row = db_query('SELECT * FROM todo WHERE id = ?', [id], one=True)
+        message = 'task created successfully'
+        response = {
+            'success': True, 
+            'status': 200,
+            'message': message,
+            'payload': [dict(row)]
+        }
+        return response, 201
+
 
 ##
 ## Actually setup the Api resource routing here
 ##
 api.add_resource(TaskList, '/tasks')
-api.add_resource(Task, '/tasks/<task_id>')
+api.add_resource(Task, '/tasks/<id>')
 
 @app.route('/')
 def home():
-    return "Please use a valid route"
+    return "Please use a valid route", 404
 
 
 if __name__ == '__main__':
