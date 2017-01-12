@@ -48,20 +48,19 @@ api = Api(app)
 def after_request(response):
     response.headers.add('Access-Control-Allow-Origin', '*')
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PATCH,PUT,POST,DELETE')
     return response
 
 parser = reqparse.RequestParser()
+parser.add_argument('task')
 parser.add_argument('id')
-parser.add_argument('title')
-parser.add_argument('description')
-parser.add_argument('active')
-parser.add_argument('complete')
+parser.add_argument('method')
 
 # Todo
 # shows a single todo item and lets you delete a todo item
 class Task(Resource):
     def get(self, id):
+        args = parser.parse_args()
         message = "record returned successfully"
         status = 200
         success = True
@@ -138,19 +137,19 @@ class TaskList(Resource):
         
     def post(self):
         args = parser.parse_args()
-        title = args['title']
-        description = args['description']
-        query = 'INSERT INTO todo (%s) VALUES (%s)' % (
-            ', '.join(('title', 'description')),
-            ', '.join(['?'] * len((title, description)))
-        )
-        id = db_execute(query, (title, description))
+        task = args['task']
+        # decode the json
+        # task = demjson.decode(task)
+        task = json.loads(task)
+        query = 'INSERT INTO todo (title, description, complete) VALUES (?, ?, ?)'
+        id = db_execute(query, (task['title'], task['description'], task['complete']))
         row = db_query('SELECT * FROM todo WHERE id = ?', [id], one=True)
         message = 'task created successfully'
         response = {
             'success': True, 
             'status': 200,
-            'message': message,
+            'message': str(type(task)),
+            # 'message': message,
             'payload': [dict(row)]
         }
         return response, 201
