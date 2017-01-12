@@ -1,0 +1,158 @@
+{
+	"variables": [],
+	"info": {
+		"name": "Todos",
+		"_postman_id": "fc51fcfd-5a9b-41b3-f1ca-875cf38b2fb5",
+		"description": "",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Create Todo",
+			"request": {
+				"url": "127.0.0.1:5000/tasks",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"task\": {\"title\": \"Take out the trash\", \"description\": \"Take Recycle Out!\", \"complete\": false}}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Get Todos",
+			"request": {
+				"url": "localhost:5000/tasks",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/x-www-form-urlencoded",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "title",
+							"value": "Complete API",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "description",
+							"value": "Is it done yet?",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "active",
+							"value": "1",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "complete",
+							"value": "0",
+							"type": "text",
+							"enabled": true
+						}
+					]
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Get Todo",
+			"request": {
+				"url": "127.0.0.1:5000/tasks/6",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/x-www-form-urlencoded",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "title",
+							"value": "Complete API",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "description",
+							"value": "Is it done yet?",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "active",
+							"value": "1",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "complete",
+							"value": "0",
+							"type": "text",
+							"enabled": true
+						}
+					]
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Todo",
+			"request": {
+				"url": "127.0.0.1:5000/tasks/8",
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					}
+				],
+				"body": {},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Update Todo",
+			"request": {
+				"url": "127.0.0.1:5000/tasks/6",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n      \"id\": 6,\n      \"title\": \"Take out the trash\",\n      \"description\": \"Recycle too!\",\n      \"active\": true,\n      \"complete\": true\n    }"
+				},
+				"description": ""
+			},
+			"response": []
+		}
+	]
+}
