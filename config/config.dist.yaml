@@ -4,9 +4,9 @@ database:
     driver: mysql
     host: localhost
     database: database
-    user: root
+    user: null
     password: null
     prefix: null
   sqlite:
     driver: sqlite
-    database: data/tasks.db
+    database: data/app.db
