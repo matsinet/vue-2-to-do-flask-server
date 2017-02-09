@@ -1,4 +1,3 @@
-import yaml
 import sqlite3
 import json
 import os
@@ -6,13 +5,8 @@ import os
 from flask import Flask, g
 from flask_restful import reqparse, abort, Api, Resource
 
-config = yaml.safe_load(open('config/config.yaml'))
-
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
-
-# Setup database
-DATABASE = 'data/app.db'
 
 def get_db():
     db = getattr(g, '_database', None)
