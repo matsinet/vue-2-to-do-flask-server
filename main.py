@@ -1,19 +1,24 @@
 import sqlite3
 import json
 import os
+import yaml
+import sqlite3
 
-from flask import Flask, g
+
+from flask import Flask, g, request
 from flask_restful import reqparse, abort, Api, Resource
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
+
 def get_db():
     db = getattr(g, '_database', None)
     if db is None:
-        db = g._database = sqlite3.connect(config['database']['sqlite']['database'])
+        db = g._database = sqlite3.connect('data/app.db')
         db.row_factory = sqlite3.Row
     return db
+
 
 def db_query(query, args=(), one=False):
     cur = get_db().execute(query, args)
@@ -21,7 +26,8 @@ def db_query(query, args=(), one=False):
     cur.close()
     return (rv[0] if rv else None) if one else rv
 
-def db_execute(query, args=()):
+
+def db_execute(query: object, args: object = ()) -> object:
     cur = get_db().execute(query, args)
     get_db().commit()
     lastid = cur.lastrowid
@@ -76,7 +82,7 @@ class Task(Resource):
 
     def delete(self, id):
         query = 'DELETE FROM todo WHERE id = ?'
-        id = db_execute(query, (id))
+        id = db_execute(query, (id,))
         message = 'task removed successfully'
         response = {
             'success': True, 
@@ -87,13 +93,13 @@ class Task(Resource):
         return response, 201
 
     def patch(self, id):
-        args = parser.parse_args()
-        title = args['title']
-        description = args['description']
-        active = args['active']
-        complete = args['complete']
+        body = request.get_json()
+        title = body['title']
+        description = body['description']
+        active = body['active']
+        complete = body['complete']
         valuestrings = []
-        for key, value in args.items():
+        for key, value in body.items():
             if key != 'id':
                 valuestrings.append('{0} = ?'.format(key))
 
@@ -128,22 +134,17 @@ class TaskList(Resource):
         }
         return response
         
-        
     def post(self):
-        args = parser.parse_args()
-        task = args['task']
-        # decode the json
-        # task = demjson.decode(task)
-        task = json.loads(task)
+        body = request.get_json()
+        task = body['task']
         query = 'INSERT INTO todo (title, description, complete) VALUES (?, ?, ?)'
         id = db_execute(query, (task['title'], task['description'], task['complete']))
         row = db_query('SELECT * FROM todo WHERE id = ?', [id], one=True)
         message = 'task created successfully'
         response = {
-            'success': True, 
+            'success': True,
             'status': 200,
-            'message': str(type(task)),
-            # 'message': message,
+            'message': message,
             'payload': [dict(row)]
         }
         return response, 201
@@ -161,4 +162,7 @@ def home():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(
+        debug=True,
+        host='0.0.0.0'
+    )
